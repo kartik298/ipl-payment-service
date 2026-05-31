@@ -6,13 +6,21 @@ const logger = winston.createLogger({
   transports: [new winston.transports.Console()],
 });
 
-const kafka = new Kafka({
-  clientId: 'payment-service',
-  brokers: (process.env.KAFKA_BROKERS || 'kafka:9092').split(','),
-  logLevel: logLevel.WARN,
-  retry: { retries: 10, initialRetryTime: 1000 },
-});
+function buildKafkaConfig() {
+  const cfg = {
+    clientId: 'payment-service',
+    brokers: (process.env.KAFKA_BROKERS || 'kafka:9092').split(','),
+    logLevel: logLevel.WARN,
+    retry: { retries: 10, initialRetryTime: 1000 },
+  };
+  if (process.env.KAFKA_SASL_USERNAME) {
+    cfg.ssl = true;
+    cfg.sasl = { mechanism: 'scram-sha-256', username: process.env.KAFKA_SASL_USERNAME, password: process.env.KAFKA_SASL_PASSWORD };
+  }
+  return cfg;
+}
 
+const kafka = new Kafka(buildKafkaConfig());
 const producer = kafka.producer({ allowAutoTopicCreation: true });
 
 async function connectProducer() {
